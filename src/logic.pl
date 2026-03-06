@@ -1,4 +1,4 @@
-:- module(logic, [make_move/5, resolve_board/2, resolve_silent/2]).
+:- module(logic, [make_move/5, resolve_board/3, resolve_silent/2]).
 :- use_module(library(clpfd)).
 :- use_module('config.pl').
 :- use_module('board.pl').
@@ -37,6 +37,85 @@ clear_board(Board, NewBoard) :-
         ), Row)
     ), NewBoard).
 
+% === CONTAGEM DE PONTOS ===
+
+match_coord(Board, R, C) :-
+    size(N),
+    between(1,N,R),
+    between(1,N,C),
+    is_match(Board,R,C).
+
+all_matches(Board, Coords) :-
+    findall((R,C), match_coord(Board,R,C), Raw),
+    sort(Raw, Coords).
+
+points_group(Size, Points) :-
+    ( Size =:= 3 -> Points = 10
+    ; Size =:= 4 -> Points = 20
+    ; Size =:= 5 -> Points = 50
+    ; Size =:= 6 -> Points = 100
+    ; Size >= 7  -> Points = 500
+    ; Points = 0 ).
+
+group_points(Coords, Points) :-
+    length(Coords, Size),
+    points_group(Size, Points).
+
+points_from_groups(Groups, Points) :-
+    maplist(group_points, Groups, List),
+    sum_list(List, Points).
+
+detect_groups(Board, Groups) :-
+    all_matches(Board, Coords),
+    group_by_lines(Coords, HGroups),
+    group_by_columns(Coords, VGroups),
+    append(HGroups, VGroups, Groups).
+
+group_by_lines(Coords, Groups) :-
+    size(N),
+    findall(GroupCoords,
+        (
+            between(1,N,R),
+            findall(C, member((R,C),Coords), Cols0),
+            sort(Cols0, Cols),
+            consecutive_segments(Cols, Blocks),
+            member(Block, Blocks),
+            length(Block, L),
+            L >= 3,
+            findall((R,C), member(C, Block), GroupCoords)
+        ),
+    Groups).
+
+group_by_columns(Coords, Groups) :-
+    size(N),
+    findall(GroupCoords,
+        (
+            between(1,N,C),
+            findall(R, member((R,C),Coords), Rows0),
+            sort(Rows0, Rows),
+            consecutive_segments(Rows, Blocks),
+            member(Block, Blocks),
+            length(Block, L),
+            L >= 3,
+            findall((R,C), member(R, Block), GroupCoords)
+        ),
+    Groups).
+
+consecutive_segments([], []).
+
+consecutive_segments([H|T], [Segment|Rest]) :-
+    build_segment(H, T, Segment, Remaining),
+    consecutive_segments(Remaining, Rest).
+
+build_segment(X, [], [X], []).
+
+build_segment(X, [Y|T], [X|Segment], Remaining) :-
+    Y =:= X + 1,
+    build_segment(Y, T, Segment, Remaining).
+
+build_segment(X, [Y|T], [X], [Y|T]) :-
+    Y =\= X + 1.
+
 % === GRAVIDADE ===
 
 fall_col([X, nil | T], [nil, X | T]) :- X \== nil.
@@ -56,14 +135,39 @@ animate_gravity(Board, FinalBoard) :-
         render(NextBoard), sleep(0.3),
         animate_gravity(NextBoard, FinalBoard)
     ; FinalBoard = Board ).
-    
-resolve_board(Board, FinalBoard) :-
-    clear_board(Board, Cleared),
-    ( Board \== Cleared ->
-        render(Cleared), write("Matches encontrados!"), nl, sleep(0.8),
+
+resolve_board(Board, FinalBoard, Points) :-
+    resolve_board(Board, FinalBoard, 0, Points).
+
+resolve_board(Board, FinalBoard, Combo, Points) :-
+    detect_groups(Board, Groups),
+
+    ( Groups \== [] ->
+
+        points_from_groups(Groups, BasePoints),
+
+        Bonus is 0.5 * Combo,
+        Multiplier is 1 + Bonus,
+        RoundPoints is round(BasePoints * Multiplier),
+
+        clear_board(Board, Cleared),
+
+        render(Cleared),
+        write("Explosao! Pontos: "), write(RoundPoints), nl,
+        sleep(0.8),
+
         animate_gravity(Cleared, Fallen),
-        resolve_board(Fallen, FinalBoard)
-    ; FinalBoard = Board ).
+
+        NextCombo is Combo + 1,
+
+        resolve_board(Fallen, FinalBoard, NextCombo, CascadePoints),
+
+        Points is RoundPoints + CascadePoints
+
+    ;
+        FinalBoard = Board,
+        Points = 0
+    ).
 
 % === CONFIGURANDO A EXIBIÇÃO PRA SÓ ACONTECER QUANDO O TABULEIRO ESTIVER PRONTO ===
 

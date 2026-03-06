@@ -19,7 +19,9 @@ game_loop(Board) :-
         render(Next), write("Trocando pecas..."), nl, sleep(0.8),
         
         % Inicia a verificacao de matches e quedas
-        resolve_board(Next, ResolvedBoard),
+        resolve_board(Next, ResolvedBoard, Points),
+        write("Pontos ganhos: "), write(Points), nl,
+
         game_loop(ResolvedBoard)
     ;
         write("Movimento invalido!"), nl,
