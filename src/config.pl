@@ -1,3 +1,11 @@
+% ---------------------------------------------------------
+% Responsável por armazenar constantes utilizadas
+% em todo o sistema, como:
+% - Tamanho do tabuleiro
+% - Tipos de bugs disponíveis
+% - Cores ANSI usadas na renderização do tabuleiro
+% ---------------------------------------------------------
+
 :- module(config, [size/1, bug_types/1, ansi_color/2]).
 
 size(8). 

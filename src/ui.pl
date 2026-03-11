@@ -1,3 +1,14 @@
+% ---------------------------------------------------------
+% Módulo responsável pela interface do usuário (UI).
+%
+% Este modulo controla:
+% - Telas do jogo (inicial, menu, regras, instruções)
+% - Entrada de dados do jogador
+% - Exibição do HUD (informações do jogador)
+% - Tela de fim de jogo
+% - Limpeza da tela
+% ---------------------------------------------------------
+
 :- module(ui, [
     clear_screen/0,
     initial_screen/0,
@@ -13,13 +24,23 @@
 :- encoding(utf8).
 :- use_module(library(readutil)).
 
-
+% ---------------------------------------------------------
+% Definição de cores ANSI usadas no terminal
+% ---------------------------------------------------------
 green('\e[32m').
 reset('\e[0m').
 
+% ---------------------------------------------------------
+% clear_screen/0
+% Simula limpeza da tela imprimindo várias linhas vazias.
+% ---------------------------------------------------------
 clear_screen :-
     print_newlines(40).
 
+% ---------------------------------------------------------
+% print_newlines/1
+% Imprime N quebras de linha recursivamente.
+% ---------------------------------------------------------
 print_newlines(0) :- !. 
 print_newlines(N) :-
     N > 0,
@@ -27,7 +48,11 @@ print_newlines(N) :-
     N1 is N - 1,
     print_newlines(N1).
 
-
+% ---------------------------------------------------------
+% initial_screen/0
+% Exibe a tela inicial do jogo com o título em ASCII
+% e aguarda o jogador pressionar 'M' para continuar.
+% ---------------------------------------------------------
 initial_screen :-
     clear_screen,
     green(G), reset(R),
@@ -42,7 +67,11 @@ initial_screen :-
     write(G), writeln(' [ Pressione a tecla \'M\' para ir ao Menu Inicial ]'), write(R),
     wait_for_m.
 
-
+% ---------------------------------------------------------
+% wait_for_m/0
+% Aguarda o jogador digitar 'M' ou 'm' para continuar.
+% Caso contrário, solicita novamente.
+% ---------------------------------------------------------
 wait_for_m :-
     write('> '), flush_output(current_output),
     read_line_to_string(user_input, Input),
@@ -52,7 +81,10 @@ wait_for_m :-
        wait_for_m
     ).
 
-
+% ---------------------------------------------------------
+% main_menu/1
+% Exibe o menu principal do jogo e lê a opção escolhida.
+% ---------------------------------------------------------
 main_menu(Opcao) :-
     clear_screen,
     writeln('===================='),
@@ -73,7 +105,10 @@ main_menu(Opcao) :-
        main_menu(Opcao)
     ).
 
-
+% ---------------------------------------------------------
+% login_screen/1
+% Solicita o nome do jogador e exibe mensagem de boas-vindas.
+% ---------------------------------------------------------
 login_screen(Name) :-
     clear_screen,
     writeln('===== LOGIN =====\n'),
@@ -84,7 +119,10 @@ login_screen(Name) :-
     writeln('Pressione [ENTER] para iniciar o jogo...'),
     read_line_to_string(user_input, _).
 
-
+% ---------------------------------------------------------
+% rules_screen/0
+% Exibe as regras básicas do jogo.
+% ---------------------------------------------------------
 rules_screen :-
     clear_screen,
     writeln('===== REGRAS ===== '),
@@ -96,7 +134,10 @@ rules_screen :-
     writeln('Pressione [ENTER] para retornar ao Menu Inicial'),
     read_line_to_string(user_input, _).
 
-
+% ---------------------------------------------------------
+% instructions_screen/0
+% Exibe instruções de como jogar e os comandos de movimento.
+% ---------------------------------------------------------
 instructions_screen :-
     clear_screen,
     writeln('===== INSTRUÇÕES ====='),
@@ -111,13 +152,26 @@ instructions_screen :-
     writeln('Pressione [ENTER] para retornar ao Menu Inicial'),
     read_line_to_string(user_input, _).
 
-
+% ---------------------------------------------------------
+% print_chars/2
+% Imprime um caractere C repetido N vezes.
+% Usado para construir bordas de caixas no HUD.
+% ---------------------------------------------------------
 print_chars(0, _) :- !.
 print_chars(N, C) :- 
     N > 0, write(C), N1 is N - 1, print_chars(N1, C).
 
+% ---------------------------------------------------------
+% box_width/1
+% Define a largura padrão das caixas exibidas no HUD.
+% ---------------------------------------------------------
 box_width(40).
 
+% ---------------------------------------------------------
+% format_line/2
+% Formata uma linha dentro da caixa do HUD com rótulo
+% e valor alinhados corretamente.
+% ---------------------------------------------------------
 format_line(Label, Value) :-
     box_width(BoxWidth),
     string_length(Label, LenL),
@@ -125,6 +179,13 @@ format_line(Label, Value) :-
     PaddingLen is BoxWidth - (LenL + LenV),
     write('║ '), write(Label), write(Value), print_chars(PaddingLen, ' '), writeln(' ║').
 
+% ---------------------------------------------------------
+% render_hud/3
+% Exibe o HUD do jogo contendo:
+% - Nome do jogador
+% - Pontuação
+% - Movimentos restantes
+% ---------------------------------------------------------
 render_hud(Name, Points, Movements) :-
     box_width(BoxWidth),
     BorderWidth is BoxWidth + 2,
@@ -140,7 +201,11 @@ render_hud(Name, Points, Movements) :-
     
     write('╚'), print_chars(BorderWidth, '═'), writeln('╝'), nl.
 
-
+% ---------------------------------------------------------
+% game_over_screen/2
+% Exibe a tela de fim de jogo com o resultado final
+% e informa se o jogador venceu ou perdeu.
+% ---------------------------------------------------------
 game_over_screen(Name, Points) :-
     clear_screen,
     writeln('╔═══════════════════════════════════╗'),
