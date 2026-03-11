@@ -116,12 +116,6 @@ build_segment(X, [Y|T], [X|Segment], Remaining) :-
 build_segment(X, [Y|T], [X], [Y|T]) :-
     Y =\= X + 1.
 
-% === ANIMAÇÃO E TERMINAL ===
-
-clear_screen :-
-    format('~c[2J~c[3J~c[999;1H', [27, 27, 27]),
-    flush_output.
-
 % === GRAVIDADE ===
 
 fall_col([X, nil | T], [nil, X | T]) :- X \== nil.
@@ -138,9 +132,7 @@ apply_gravity_step(Board, NextBoard) :-
 animate_gravity(Board, FinalBoard) :-
     apply_gravity_step(Board, NextBoard),
     ( Board \== NextBoard ->
-        clear_screen,            % <--- Limpa a tela antes do render
-        render(NextBoard), 
-        sleep(0.3),
+        render(NextBoard), sleep(0.3),
         animate_gravity(NextBoard, FinalBoard)
     ; FinalBoard = Board ).
 
@@ -160,7 +152,6 @@ resolve_board(Board, FinalBoard, Combo, Points) :-
 
         clear_board(Board, Cleared),
 
-        clear_screen,            % <--- Limpa a tela antes de mostrar a explosão
         render(Cleared),
         write("Explosao! Pontos: "), write(RoundPoints), nl,
         sleep(0.8),
@@ -189,7 +180,7 @@ gravity_col_instant(Col, NewCol) :-
     maplist({}/[X]>>random_bug(X), Pad),
     append(Pad, Solid, NewCol).
 
-% Resolve cascatas silenciosamente
+% Resolve cascatas 
 resolve_silent(Board, FinalBoard) :-
     clear_board(Board, Cleared),
     ( Board \== Cleared ->
