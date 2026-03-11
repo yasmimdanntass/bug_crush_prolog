@@ -147,8 +147,7 @@ instructions_screen :-
     writeln(' - a: mover a peça para a esquerda'),
     writeln(' - s: mover a peça para baixo'),
     writeln(' - d: mover a peça para a direita\n'),
-    writeln('Formato: linha coluna direção'),
-    writeln('Exemplo: 1 2 w\n'),
+    writeln('Formato: \n Linha: X \n Coluna: Y \n Direção(w/a/s/d): Z \n'),
     writeln('Pressione [ENTER] para retornar ao Menu Inicial'),
     read_line_to_string(user_input, _).
 

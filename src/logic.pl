@@ -33,15 +33,17 @@ direction_delta(d,0, 1).
 
 % ---------------------------------------------------------
 % make_move/5
-% Realiza a troca entre duas posições adjacentes
-% do tabuleiro com base na direção escolhida.
+% Realiza a troca entre duas posições adjacentes.
+% O movimento só é válido se gerar pelo menos um match.
 
 make_move(Board,R,C,Dir,NewBoard) :-
     direction_delta(Dir,DR,DC),
     R2 is R+DR,
     C2 is C+DC,
     valid_pos(R2,C2),
-    swap(Board,R,C,R2,C2,NewBoard).
+    swap(Board,R,C,R2,C2,NewBoard),
+    detect_groups(NewBoard, Groups),
+    Groups \== []. 
 
 % ---------------------------------------------------------
 % is_match/3
@@ -203,6 +205,22 @@ build_segment(X, [Y|T], [X|Segment], Remaining) :-
 build_segment(X, [Y|T], [X], [Y|T]) :-
     Y =\= X + 1.
 
+
+% ---------------------------------------------------------
+% === ANIMAÇÃO E TERMINAL ===
+% Predicados responsáveis por manipular o terminal
+% garantindo que as animações sejam fluidas.
+% ---------------------------------------------------------
+
+clear_screen :-
+    % 27 é o código ASCII para ESC.
+    % [2J     -> Limpa a tela visível
+    % [3J     -> Limpa o histórico de rolagem
+    % [999;1H -> Vai para o fundo da tela (linha 999)
+    format('~c[2J~c[3J~c[999;1H', [27, 27, 27]),
+    flush_output.
+
+
 % ---------------------------------------------------------
 % === GRAVIDADE ===
 % Predicados responsáveis por fazer as peças
@@ -233,7 +251,8 @@ apply_gravity_step(Board, NextBoard) :-
 animate_gravity(Board, FinalBoard) :-
     apply_gravity_step(Board, NextBoard),
     ( Board \== NextBoard ->
-        render(NextBoard), sleep(0.3),
+        clear_screen,                      % <--- LIMPA E ANCORA NO FUNDO AQUI
+        render(NextBoard), sleep(0.1),
         animate_gravity(NextBoard, FinalBoard)
     ; FinalBoard = Board ).
 
@@ -262,6 +281,7 @@ resolve_board(Board, FinalBoard, Combo, Points) :-
 
         clear_board(Board, Cleared),
 
+        clear_screen,                      % <--- LIMPA E ANCORA NO FUNDO AQUI
         render(Cleared),
         write("Explosao! Pontos: "), write(RoundPoints), nl,
         sleep(0.8),
