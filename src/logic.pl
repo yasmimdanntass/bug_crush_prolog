@@ -1,13 +1,40 @@
+% ---------------------------------------------------------
+% Módulo responsável pela lógica principal do jogo.
+%
+% Este modulo controla:
+% - Movimentação das peças
+% - Detecção de matches
+% - Remoção de peças combinadas
+% - Cálculo de pontuação
+% - Aplicação de gravidade
+% - Resolução de cascatas
+% ---------------------------------------------------------
+
 :- module(logic, [make_move/5, resolve_board/3, resolve_silent/2]).
 :- use_module(library(clpfd)).
 :- use_module('config.pl').
 :- use_module('board.pl').
 :- use_module('render.pl').
 
+% ---------------------------------------------------------
+% direction_delta/3
+% Define o deslocamento de linha e coluna
+% correspondente às direções do jogador.
+%
+% w = cima
+% s = baixo
+% a = esquerda
+% d = direita
+
 direction_delta(w,-1,0).
 direction_delta(s, 1,0).
 direction_delta(a,0,-1).
 direction_delta(d,0, 1).
+
+% ---------------------------------------------------------
+% make_move/5
+% Realiza a troca entre duas posições adjacentes
+% do tabuleiro com base na direção escolhida.
 
 make_move(Board,R,C,Dir,NewBoard) :-
     direction_delta(Dir,DR,DC),
@@ -15,6 +42,11 @@ make_move(Board,R,C,Dir,NewBoard) :-
     C2 is C+DC,
     valid_pos(R2,C2),
     swap(Board,R,C,R2,C2,NewBoard).
+
+% ---------------------------------------------------------
+% is_match/3
+% Verifica se uma célula faz parte de um match
+% horizontal ou vertical de pelo menos 3 peças iguais.
 
 is_match(Board, R, C) :-
     cell(Board, R, C, V), V \== nil,
@@ -27,6 +59,11 @@ is_match(Board, R, C) :-
         (R1 is R+1, R2 is R+2, cell(Board, R1, C, V), cell(Board, R2, C, V))
     ).
 
+% ---------------------------------------------------------
+% clear_board/2
+% Remove todas as peças que fazem parte de um match,
+% substituindo-as por nil.
+
 clear_board(Board, NewBoard) :-
     size(N),
     findall(Row, (
@@ -37,7 +74,16 @@ clear_board(Board, NewBoard) :-
         ), Row)
     ), NewBoard).
 
+% ---------------------------------------------------------
 % === CONTAGEM DE PONTOS ===
+% Predicados responsáveis por identificar
+% todas as coordenadas que fazem parte de matches
+% e calcular a pontuação correspondente.
+% ---------------------------------------------------------
+
+% ---------------------------------------------------------
+% match_coord/3
+% Gera coordenadas que fazem parte de um match.
 
 match_coord(Board, R, C) :-
     size(N),
@@ -45,9 +91,18 @@ match_coord(Board, R, C) :-
     between(1,N,C),
     is_match(Board,R,C).
 
+% ---------------------------------------------------------
+% all_matches/2
+% Retorna todas as coordenadas que fazem parte
+% de matches no tabuleiro.
+
 all_matches(Board, Coords) :-
     findall((R,C), match_coord(Board,R,C), Raw),
     sort(Raw, Coords).
+
+% ---------------------------------------------------------
+% points_group/2
+% Define a pontuação baseada no tamanho do grupo.
 
 points_group(Size, Points) :-
     ( Size =:= 3 -> Points = 10
@@ -57,19 +112,37 @@ points_group(Size, Points) :-
     ; Size >= 7  -> Points = 500
     ; Points = 0 ).
 
+% ---------------------------------------------------------
+% group_points/2
+% Calcula os pontos de um grupo específico.
+
 group_points(Coords, Points) :-
     length(Coords, Size),
     points_group(Size, Points).
 
+% ---------------------------------------------------------
+% points_from_groups/2
+% Soma a pontuação de todos os grupos detectados.
+
 points_from_groups(Groups, Points) :-
     maplist(group_points, Groups, List),
     sum_list(List, Points).
+
+% ---------------------------------------------------------
+% detect_groups/2
+% Detecta grupos horizontais e verticais
+% que formam matches no tabuleiro.
 
 detect_groups(Board, Groups) :-
     all_matches(Board, Coords),
     group_by_lines(Coords, HGroups),
     group_by_columns(Coords, VGroups),
     append(HGroups, VGroups, Groups).
+
+% ---------------------------------------------------------
+% group_by_lines/2
+% Identifica grupos consecutivos de peças
+% iguais em linhas do tabuleiro.
 
 group_by_lines(Coords, Groups) :-
     size(N),
@@ -86,6 +159,11 @@ group_by_lines(Coords, Groups) :-
         ),
     Groups).
 
+% ---------------------------------------------------------
+% group_by_columns/2
+% Identifica grupos consecutivos de peças
+% iguais em colunas do tabuleiro.
+
 group_by_columns(Coords, Groups) :-
     size(N),
     findall(GroupCoords,
@@ -101,11 +179,20 @@ group_by_columns(Coords, Groups) :-
         ),
     Groups).
 
+% ---------------------------------------------------------
+% consecutive_segments/2
+% Divide uma lista ordenada em segmentos
+% consecutivos de números.
+
 consecutive_segments([], []).
 
 consecutive_segments([H|T], [Segment|Rest]) :-
     build_segment(H, T, Segment, Remaining),
     consecutive_segments(Remaining, Rest).
+
+% ---------------------------------------------------------
+% build_segment/4
+% Constrói um segmento de valores consecutivos.
 
 build_segment(X, [], [X], []).
 
@@ -116,7 +203,11 @@ build_segment(X, [Y|T], [X|Segment], Remaining) :-
 build_segment(X, [Y|T], [X], [Y|T]) :-
     Y =\= X + 1.
 
+% ---------------------------------------------------------
 % === GRAVIDADE ===
+% Predicados responsáveis por fazer as peças
+% caírem após explosões e preencher espaços vazios.
+% ---------------------------------------------------------
 
 fall_col([X, nil | T], [nil, X | T]) :- X \== nil.
 fall_col([H | T], [H | T1]) :- fall_col(T, T1).
@@ -124,10 +215,20 @@ fall_col([nil | T], [Bug | T]) :- random_bug(Bug).
 fall_step(Col, NextCol) :- fall_col(Col, NextCol), !.
 fall_step(Col, Col).
 
+% ---------------------------------------------------------
+% apply_gravity_step/2
+% Aplica um passo de gravidade em todas
+% as colunas do tabuleiro.
+
 apply_gravity_step(Board, NextBoard) :-
     transpose(Board, Cols),
     maplist(fall_step, Cols, NextCols),
     transpose(NextCols, NextBoard).
+
+% ---------------------------------------------------------
+% animate_gravity/2
+% Aplica gravidade repetidamente até
+% que nenhuma peça possa mais cair.
 
 animate_gravity(Board, FinalBoard) :-
     apply_gravity_step(Board, NextBoard),
@@ -136,8 +237,17 @@ animate_gravity(Board, FinalBoard) :-
         animate_gravity(NextBoard, FinalBoard)
     ; FinalBoard = Board ).
 
+% ---------------------------------------------------------
+% resolve_board/3
+% Resolve explosões e cascatas após um movimento.
+
 resolve_board(Board, FinalBoard, Points) :-
     resolve_board(Board, FinalBoard, 0, Points).
+
+% ---------------------------------------------------------
+% resolve_board/4
+% Processa matches, pontuação e cascatas
+% recursivamente até estabilizar o tabuleiro.
 
 resolve_board(Board, FinalBoard, Combo, Points) :-
     detect_groups(Board, Groups),
@@ -169,7 +279,15 @@ resolve_board(Board, FinalBoard, Combo, Points) :-
         Points = 0
     ).
 
-% === CONFIGURANDO A EXIBIÇÃO PRA SÓ ACONTECER QUANDO O TABULEIRO ESTIVER PRONTO ===
+% ---------------------------------------------------------
+% === CONFIGURANDO A EXIBIÇÃO PRA SÓ ACONTECER QUANDO
+% O TABULEIRO ESTIVER PRONTO ===
+% ---------------------------------------------------------
+
+% ---------------------------------------------------------
+% gravity_col_instant/2
+% Aplica gravidade instantânea em uma coluna,
+% preenchendo espaços vazios com novos bugs.
 
 gravity_col_instant(Col, NewCol) :-
     include(\==(nil), Col, Solid),
@@ -180,7 +298,10 @@ gravity_col_instant(Col, NewCol) :-
     maplist({}/[X]>>random_bug(X), Pad),
     append(Pad, Solid, NewCol).
 
-% Resolve cascatas 
+% ---------------------------------------------------------
+% resolve_silent/2
+% Resolve cascatas.
+
 resolve_silent(Board, FinalBoard) :-
     clear_board(Board, Cleared),
     ( Board \== Cleared ->
