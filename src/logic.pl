@@ -251,7 +251,7 @@ apply_gravity_step(Board, NextBoard) :-
 animate_gravity(Board, FinalBoard) :-
     apply_gravity_step(Board, NextBoard),
     ( Board \== NextBoard ->
-        clear_screen,                      % <--- LIMPA E ANCORA NO FUNDO AQUI
+        clear_screen,                     
         render(NextBoard), sleep(0.1),
         animate_gravity(NextBoard, FinalBoard)
     ; FinalBoard = Board ).
@@ -281,7 +281,7 @@ resolve_board(Board, FinalBoard, Combo, Points) :-
 
         clear_board(Board, Cleared),
 
-        clear_screen,                      % <--- LIMPA E ANCORA NO FUNDO AQUI
+        clear_screen,                     
         render(Cleared),
         write("Explosao! Pontos: "), write(RoundPoints), nl,
         sleep(0.8),
